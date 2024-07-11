@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message List</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+
+<h1>Message List</h1>
+
+<table id="message-table">
+    <thead>
+        <tr>
+            <th>ИД</th>
+            <th>НАЗВАНИЕ</th>
+            <th>ОТ</th>
+            <th>ДАТА</th>
+            <th>ОПИСАНИЕ</th>
+            <th>Файлы</th>
+        </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+
+<div id="progress-bar">
+    <p id="progress-label">Reading messages...</p>
+    <div id="progress" style="width: 0%; background-color: #4caf50; height: 20px;"></div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        var ws_scheme = window.location.protocol == "https:" ? "wss" : "ws";
+        var ws_path = ws_scheme + '://' + window.location.host + '/ws/messages/';
+
+        var socket = new WebSocket(ws_path);
+
+        socket.onopen = function() {
+            console.log('WebSocket connection established');
+            socket.send(JSON.stringify({type: 'start'}));  // Отправка сообщения для инициации процесса
+        };
+
+        socket.onmessage = function(event) {
+            var data = JSON.parse(event.data);
+            if (data.type == 'email_messages') {
+                var messages = data.messages;
+                for (var i = 0; i < messages.length; i++) {
+                    var message = messages[i];
+                    var row = '<tr>' +
+                        '<td>' + (i + 1) + '</td>' +
+                        '<td>' + message.subject + '</td>' +
+                        '<td>' + message.from + '</td>' +
+                        '<td>' + message.date + '</td>' +
+                        '<td>' + (message.text ? message.text.substring(0, 50) : '') + '</td>' +
+                        '<td>' + (message.attachments ? message.attachments.join(', ') : '') + '</td>' +
+                        '</tr>';
+                    $('#message-table tbody').append(row);
+                }
+                $('#progress-label').text('Messages loaded');
+                $('#progress').css('width', '100%');
+            } else if (data.type == 'error') {
+                console.error('Error:', data.message);
+            }
+        };
+
+        socket.onclose = function(event) {
+            console.log('WebSocket connection closed:', event.code, event.reason);
+        };
+    });
+</script>
+
+</body>
+</html>
